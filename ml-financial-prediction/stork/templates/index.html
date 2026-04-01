@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주가 예측</title>
+    <!-- Tailwind CSS를 위한 CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-xl w-full text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">주가 상승 예측</h1>
+        <p class="text-gray-600 mb-8">
+            예측하고 싶은 기업을 선택하고 버튼을 누르세요.
+        </p>
+        
+        <div class="space-y-4">
+            <select id="companySelect" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="LS">LS</option>
+                <option value="LG">LG</option>
+                <option value="한화">한화</option>
+                <option value="KT&G">KT&G</option>
+                <option value="신한지주">신한지주</option>
+                <option value="삼성전자">삼성전자</option>
+                <option value="현대모비스">현대모비스</option>
+                <option value="카카오페이">카카오페이</option>
+                <option value="POSCO">POSCO</option>
+                <option value="SK이노베이션">SK이노베이션</option>
+            </select>
+            <button id="predictTodayBtn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                예측하기
+            </button>
+        </div>
+
+        <div id="resultContainer" class="mt-8 p-6 bg-gray-50 rounded-lg shadow-inner text-center hidden">
+            <p id="predictionText" class="text-xl font-semibold text-gray-800 mb-2"></p>
+            <p id="upProba" class="text-lg text-green-600 font-medium"></p>
+            <p id="downProba" class="text-lg text-red-600 font-medium"></p>
+            <p id="subText" class="text-sm text-gray-500 mt-4"></p>
+        </div>
+        
+        <div id="loading" class="mt-8 text-center hidden">
+            <svg class="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-gray-500">예측 중...</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predictTodayBtn').addEventListener('click', async function() {
+            const resultContainer = document.getElementById('resultContainer');
+            const predictionText = document.getElementById('predictionText');
+            const upProbaText = document.getElementById('upProba');
+            const downProbaText = document.getElementById('downProba');
+            const subText = document.getElementById('subText');
+            const loading = document.getElementById('loading');
+            const companySelect = document.getElementById('companySelect');
+
+            // 결과 컨테이너 숨기기 및 로딩 표시
+            resultContainer.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            const selectedCompany = companySelect.value;
+            
+            try {
+                const response = await fetch('/predict_today', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ company: selectedCompany })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    predictionText.textContent = `${selectedCompany}의 다음 날 주가는 "${data.prediction}"할 것으로 예측됩니다.`;
+                    upProbaText.textContent = `상승 확률: ${data.up_proba}%`;
+                    downProbaText.textContent = `하락 확률: ${data.down_proba}%`;
+                    subText.textContent = "※ 이 예측은 학습된 모델에 기반한 것이며, 실제 결과와 다를 수 있습니다.";
+                    predictionText.classList.remove('text-red-500');
+                    predictionText.classList.add('text-gray-800');
+                } else {
+                    predictionText.textContent = `예측에 실패했습니다. (${data.error})`;
+                    upProbaText.textContent = "";
+                    downProbaText.textContent = "";
+                    subText.textContent = "Flask 서버와 모델 파일을 확인해주세요.";
+                    predictionText.classList.remove('text-gray-800');
+                    predictionText.classList.add('text-red-500');
+                }
+
+            } catch (error) {
+                console.error('예측 요청 중 오류 발생:', error);
+                predictionText.textContent = "서버와의 통신에 문제가 발생했습니다.";
+                upProbaText.textContent = "";
+                downProbaText.textContent = "";
+                subText.textContent = "Flask 서버가 실행 중인지 확인해주세요.";
+                predictionText.classList.remove('text-gray-800');
+                predictionText.classList.add('text-red-500');
+            } finally {
+                // 로딩 숨기기 및 결과 컨테이너 표시
+                loading.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
